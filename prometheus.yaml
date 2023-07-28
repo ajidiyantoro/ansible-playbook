@@ -1,0 +1,130 @@
+- hosts: prometheus
+  become: true
+  vars:
+    packages:
+      download_url: https://github.com/prometheus/prometheus/releases/download/v2.45.0/prometheus-2.45.0.linux-amd64.tar.gz
+      package_name: prometheus-2.45.0.linux-amd64.tar.gz
+    temp_dir: /tmp
+    config_dir: /etc/prometheus
+    data_dir: /var/lib/prometheus
+
+  tasks:
+    - name: Download Prometheus
+      get_url:
+        url: "{{ packages.download_url }}"
+        dest: "{{ temp_dir }}/{{ packages.package_name }}"
+
+    - name: Extract Prometheus
+      unarchive:
+        src: "{{ temp_dir }}/{{ packages.package_name }}"
+        dest: "{{ temp_dir }}"
+        remote_src: yes
+
+    - name: Create prometheus group
+      group:
+        name: prometheus
+        state: present
+
+    - name: Create prometheus user
+      user:
+        name: prometheus
+        group: prometheus
+        shell: /sbin/nologin
+        system: yes
+        createhome: no
+
+    - name: Create Config and Data Directory
+      file:
+        path: "{{ config_dir }}"
+        state: directory
+
+    - name: Create Config and Data Directory
+      file:
+        path: "{{ data_dir }}"
+        owner: prometheus
+        group: prometheus
+        state: directory
+
+    - name: Copy Prometheus Binary Files
+      copy:
+        src: "{{ item }}"
+        dest: /usr/local/bin
+        owner: root
+        mode: "0755"
+        group: root
+        remote_src: yes
+      with_items:
+        - "{{ temp_dir }}/prometheus-2.45.0.linux-amd64./prometheus"
+        - "{{ temp_dir }}/prometheus-2.45.0.linux-amd64./promtool"
+
+    - name: Copy Prometheus Files
+      copy:
+        src: "{{ item }}"
+        dest: "{{ config_dir }}"
+        owner: root
+        group: root
+        remote_src: yes
+      with_items:
+        - "{{ temp_dir }}/prometheus-2.45.0.linux-amd64./consoles"
+        - "{{ temp_dir }}/prometheus-2.45.0.linux-amd64./console_libraries"
+
+    - name: Creating Prometheus Config
+      copy:
+        dest: "/etc/systemd/system/node-exporter.service"
+        content: |
+          global:
+            scrape_interval: 15s
+            evaluation_interval: 15s
+
+          scrape_configs:
+            - job_name: "prometheus"
+              static_configs:
+                - targets: ["demo-server-1:9090"]
+            - job_name: "node-exporter"
+              static_configs:
+                - targets: ["demo-server-1:9100"]
+                - targets: ["demo-server-2:9100"]
+                - targets: ["demo-server-3:9100"]
+    
+    - name: Creating Prometheus Service Daemon
+      copy:
+        dest: "/etc/systemd/system/node-exporter.service"
+        content: |
+          [Unit]
+          Description=Prometheus
+          Documentation=https://prometheus.io/docs/introduction/overview/
+          Wants=network-online.target
+          After=network-online.target
+
+          [Service]
+          User=prometheus
+          Group=prometheus
+          Type=simple
+          ExecStart=/usr/local/bin/prometheus \
+          --config.file /etc/prometheus/prometheus.yml \
+          --storage.tsdb.path /var/lib/prometheus/ \
+          --web.console.templates=/etc/prometheus/consoles \
+          --web.console.libraries=/etc/prometheus/console_libraries
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Daemon Reload
+      systemd:
+        name: prometheus
+        state: reloaded
+
+    - name: Start Prometheus Service
+      systemd:
+        name: prometheus
+        state: started
+        enabled: yes
+
+    - name: Clean Temporary Directory
+      file:
+        path: "{{ item }}"
+        state: absent
+        force: yes
+      with_items:
+        - "{{ temp_dir }}/prometheus-2.45.0.linux-amd64."
+        - "{{ temp_dir }}/{{ packages.package_name }}"

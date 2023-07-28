@@ -1,0 +1,33 @@
+- hosts: prometheus
+  become: true
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: Enable Nginx service
+      systemd:
+        name: nginx
+        enabled: yes
+        state: started
+
+    - name: Install PHP-FPM and required extensions
+      apt:
+        name:
+          - php-fpm
+          - php-common
+          - php-mbstring
+          - php-xml
+          # Add any other PHP extensions you need
+        state: present
+
+    - name: Enable PHP-FPM service
+      systemd:
+        name: php7.4-fpm  # Adjust the version number based on your desired PHP version
+        enabled: yes
+        state: started
