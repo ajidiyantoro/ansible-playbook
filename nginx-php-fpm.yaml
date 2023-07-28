@@ -1,4 +1,4 @@
-- hosts: prometheus
+- hosts: all
   become: true
   tasks:
     - name: Update apt cache
@@ -28,6 +28,6 @@
 
     - name: Enable PHP-FPM service
       systemd:
-        name: php7.4-fpm  # Adjust the version number based on your desired PHP version
+        name: php8.1-fpm  # Adjust the version number based on your desired PHP version
         enabled: yes
         state: started

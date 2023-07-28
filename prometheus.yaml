@@ -1,4 +1,4 @@
-- hosts: prometheus
+- hosts: all
   become: true
   vars:
     packages:
@@ -54,8 +54,8 @@
         group: root
         remote_src: yes
       with_items:
-        - "{{ temp_dir }}/prometheus-2.45.0.linux-amd64./prometheus"
-        - "{{ temp_dir }}/prometheus-2.45.0.linux-amd64./promtool"
+        - "{{ temp_dir }}/prometheus-2.45.0.linux-amd64/prometheus"
+        - "{{ temp_dir }}/prometheus-2.45.0.linux-amd64/promtool"
 
     - name: Copy Prometheus Files
       copy:
@@ -65,8 +65,8 @@
         group: root
         remote_src: yes
       with_items:
-        - "{{ temp_dir }}/prometheus-2.45.0.linux-amd64./consoles"
-        - "{{ temp_dir }}/prometheus-2.45.0.linux-amd64./console_libraries"
+        - "{{ temp_dir }}/prometheus-2.45.0.linux-amd64/consoles"
+        - "{{ temp_dir }}/prometheus-2.45.0.linux-amd64/console_libraries"
 
     - name: Creating Prometheus Config
       copy:
@@ -88,7 +88,7 @@
     
     - name: Creating Prometheus Service Daemon
       copy:
-        dest: "/etc/systemd/system/node-exporter.service"
+        dest: "/etc/systemd/system/prometheus.service"
         content: |
           [Unit]
           Description=Prometheus
@@ -126,5 +126,5 @@
         state: absent
         force: yes
       with_items:
-        - "{{ temp_dir }}/prometheus-2.45.0.linux-amd64."
+        - "{{ temp_dir }}/prometheus-2.45.0.linux-amd64"
         - "{{ temp_dir }}/{{ packages.package_name }}"
